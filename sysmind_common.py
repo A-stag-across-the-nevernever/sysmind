@@ -6,6 +6,8 @@ import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import sysmind_platform
+
 # Paths
 CONFIG_DIR = Path.home() / ".config" / "sysmind"
 DATA_DIR = Path.home() / ".local" / "share" / "sysmind"
@@ -32,11 +34,10 @@ DEFAULT_CONFIG = {
     "promote_threshold": 3,  # executions before suggesting promotion
 }
 
-# Command blocklist — never suggest or execute
-BLOCKLIST = {
-    "rm", "dd", "mkfs", "fdisk", "mkfs.ext4", "mkfs.ext3",
-    "mkfs.ntfs", "mkfs.vfat", "parted", "gparted",
-}
+# Pre-refused commands for THIS platform. Seeds the block list; the human can
+# remove any of them. The Linux verbs protect nothing on Windows and vice
+# versa, so this is platform data rather than a constant.
+BLOCKLIST = sysmind_platform.CURRENT.blocklist_seed
 
 SAFE_AUTO_COMMANDS = {
     "apt update", "apt upgrade", "apt autoremove",

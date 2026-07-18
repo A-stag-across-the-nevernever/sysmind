@@ -17,12 +17,13 @@ from sysmind_display import render_dashboard
 from sysmind_sync import shell_syntax_ok
 from sysmind_turn import run_turn, needs_ollama
 import sysmind_strings as strings
+import sysmind_platform
 
 
-# Fence languages treated as runnable shell. A bare ``` is deliberately NOT
-# included: it is ambiguous, and widening what counts as executable is the
-# wrong direction for a tool that runs what it extracts.
-SHELL_FENCES = {"bash", "sh", "shell", "zsh", "console"}
+# Fence languages treated as runnable on this platform. A bare ``` is
+# deliberately NOT included: it is ambiguous, and widening what counts as
+# executable is the wrong direction for a tool that runs what it extracts.
+SHELL_FENCES = sysmind_platform.CURRENT.fences
 
 
 def extract_command_blocks(response: str) -> list:
@@ -119,10 +120,21 @@ def execute_with_confirm(cmd: str, level: int, config: dict,
     blocklist_enabled = config.get("blocklist_enabled", True)
     approvals = config.get("approvals", {})
 
-    # 0. Never offer something that is not valid shell. `bash -n` parses
-    #    without executing, so this is safe to run on model output.
-    if shell_syntax_ok(cmd) is False:
-        print("⚠️  " + strings.load(config)["invalid_shell"])
+    # 0. Fail CLOSED. Anything not positively verified as parseable is
+    #    refused. Previously this checked `is False`, so on a machine with no
+    #    checker the result was None and every command sailed through
+    #    unverified — the gate disappeared silently instead of holding.
+    verdict = shell_syntax_ok(cmd)
+    if verdict is not True:
+        S = strings.load(config)
+        if verdict is False:
+            print("⚠️  " + S["invalid_shell"])
+        else:
+            print(f"⚠️  Cannot verify commands on this system "
+                  f"({sysmind_platform.CURRENT.name}): no syntax checker "
+                  f"available, so nothing will be offered to run.")
+            if sysmind_platform.CURRENT.syntax_check:
+                print(f"   Expected: {' '.join(sysmind_platform.CURRENT.syntax_check[:2])}")
         print(f"   {_display(cmd)}")
         return
 

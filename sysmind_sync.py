@@ -31,6 +31,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
+import sysmind_platform
 from sysmind_common import DATA_DIR, ensure_dirs, load_config
 from sysmind_partners import (LLMPartner, PartnerError, PartnerRole,
                               partners_from_config)
@@ -95,38 +96,23 @@ def script_ratio(text: str, script: str) -> float:
 
 
 def shell_syntax_ok(code: str, timeout: float = 5.0) -> Optional[bool]:
-    """Parse-check shell with `bash -n`. Returns None if bash is unavailable.
+    """Parse the command without executing it. True / False / None.
 
-    `bash -n` reads and parses without executing — safe to run on model output.
-    NOTE: this is necessary but nowhere near sufficient. Almost any prose parses
+    The checker is whatever this platform provides — `bash -n` on Linux,
+    PowerShell's Parser on Windows. None means it could not be checked, which
+    callers about to RUN something must treat as a refusal.
+
+    Necessary but nowhere near sufficient on its own: almost any prose parses
     as shell ("hmm, not sure" is the command `hmm,` with two arguments), so it
     must be paired with looks_like_command().
     """
-    if not code.strip():
-        return None
-    try:
-        r = subprocess.run(["bash", "-n"], input=code, text=True,
-                           capture_output=True, timeout=timeout)
-        return r.returncode == 0
-    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
-        return None
+    return sysmind_platform.syntax_ok(code, timeout=timeout)
 
 
 _SHELL_KEYWORDS = {"for", "while", "until", "if", "case", "do", "done",
                    "then", "fi", "esac", "function"}
 
-_KNOWN_COMMANDS = {
-    "ls", "du", "df", "find", "grep", "egrep", "awk", "sed", "sort", "head",
-    "tail", "cat", "echo", "wc", "cut", "tr", "uniq", "xargs", "tee",
-    "systemctl", "journalctl", "service", "systemd-analyze", "loginctl",
-    "apt", "apt-get", "apt-cache", "dpkg", "dpkg-query", "snap", "flatpak",
-    "ss", "netstat", "ip", "ping", "curl", "wget", "dig", "host",
-    "ps", "top", "htop", "free", "uptime", "uname", "whoami", "id", "last",
-    "who", "lsof", "chmod", "chown", "stat", "file", "which", "whereis",
-    "readlink", "realpath", "tar", "gzip", "zip", "unzip", "rsync", "cp",
-    "mv", "mkdir", "touch", "ln", "kill", "pkill", "pgrep", "nice", "renice",
-    "timeout", "sudo", "env", "date", "sync", "mount", "lsblk", "blkid",
-}
+_KNOWN_COMMANDS = sysmind_platform.CURRENT.known_commands
 
 _CMD_NAME_RE = re.compile(r"^(?:/[\w./+-]+|[A-Za-z_][\w.+-]*)$")
 _SHELL_SIGNAL_RE = re.compile(r"(?:^|\s)-{1,2}\w|[|>]|\$\(|`|/\w")
