@@ -12,13 +12,51 @@ CONFIG_DIR = Path.home() / ".config" / "sysmind"
 DATA_DIR = Path.home() / ".local" / "share" / "sysmind"
 LIB_DIR = DATA_DIR / "lib"
 
-# Curated pairs: a language-strong conscious slot beside an ops-strong
-# unconscious one. Same table sysmind_doctor recommends from.
-MODEL_PAIRS = {
-    "4gb":  ("qwen3:1.7b", "qwen2.5-coder:1.5b"),
-    "8gb":  ("qwen3:8b",   "qwen2.5-coder:7b"),
-    "16gb": ("qwen3:14b",  "qwen2.5-coder:14b"),
-    "32gb": ("qwen3:32b",  "qwen3-coder:30b"),
+# Curated conscious-slot families. Only this list varies with language: the
+# unconscious slot writes shell, and shell is the same in every language.
+#
+# Language support comes from the model, not from the interface. A family that
+# covers 119 languages supports 119 languages here; nothing is special-cased.
+CONSCIOUS_FAMILIES = [
+    {
+        "key": "qwen3",
+        "label": "Qwen3 - 119 languages, Apache-2.0  [recommended]",
+        "coverage": "almost any language, including Urdu, Arabic, Hindi, Bengali",
+        "excludes": [],
+        "sizes": {"4gb": "qwen3:1.7b", "8gb": "qwen3:8b",
+                  "16gb": "qwen3:14b", "32gb": "qwen3:32b"},
+    },
+    {
+        "key": "gemma3",
+        "label": "Gemma 3 - 55 languages, strong translation quality",
+        "coverage": "55 major languages",
+        "excludes": [],
+        "sizes": {"4gb": "gemma3:1b", "8gb": "gemma3:4b",
+                  "16gb": "gemma3:12b", "32gb": "gemma3:27b"},
+    },
+    {
+        "key": "command-r",
+        "label": "Command-R - 10 major languages, long context",
+        "coverage": "English, French, Spanish, Italian, German, Portuguese, "
+                    "Japanese, Korean, Arabic, Chinese",
+        "excludes": ["urdu", "hindi", "bengali", "swahili", "punjabi"],
+        "sizes": {"4gb": "command-r7b", "8gb": "command-r7b",
+                  "16gb": "command-r", "32gb": "command-r"},
+    },
+    {
+        "key": "aya-expanse",
+        "label": "Aya Expanse - 23 languages, CC-BY-NC (non-commercial)",
+        "coverage": "23 languages; strong Arabic, Persian, Hindi, Turkish",
+        "excludes": ["urdu", "bengali", "swahili", "punjabi"],
+        "sizes": {"4gb": "aya-expanse:8b", "8gb": "aya-expanse:8b",
+                  "16gb": "aya-expanse:8b", "32gb": "aya-expanse:32b"},
+    },
+]
+
+# The unconscious slot. Language-agnostic by definition.
+CODER_SIZES = {
+    "4gb": "qwen2.5-coder:1.5b", "8gb": "qwen2.5-coder:7b",
+    "16gb": "qwen2.5-coder:14b", "32gb": "qwen3-coder:30b",
 }
 
 SCRIPTS = ["sysmind.py", "sysmind_scan.py", "sysmind_orbit.py", "sysmind_display.py",
@@ -42,6 +80,14 @@ def ask(question: str, options: list, default: int = 0) -> int:
         pass
     print("Invalid choice, using default.")
     return default
+
+
+def ask_text(question: str, default: str = "") -> str:
+    """Free-text answer. Used where a fixed list would exclude people."""
+    print(f"\n{question}")
+    if default:
+        print(f"  (press enter for: {default})")
+    return input("> ").strip() or default
 
 
 def detect_ram() -> str:
@@ -91,32 +137,40 @@ def install():
 
     ram = detect_ram()
     tiers = ["4gb", "8gb", "16gb", "32gb"]
-    ram_options = [
-        "4GB or less  - qwen3:1.7b + qwen2.5-coder:1.5b",
-        "8GB          - qwen3:8b + qwen2.5-coder:7b",
-        "16GB         - qwen3:14b + qwen2.5-coder:14b",
-        "24GB or more - qwen3:32b + qwen3-coder:30b",
-    ]
+    ram_options = ["4GB or less", "8GB", "16GB", "24GB or more"]
     ram_idx = ask("How much RAM does this machine have?", ram_options,
                   default=tiers.index(ram) if ram in tiers else 1)
     ram_tier = tiers[ram_idx]
-    conscious_model, unconscious_model = MODEL_PAIRS[ram_tier]
     budgets = {"4gb": 2000, "8gb": 4000, "16gb": 8000, "32gb": 8000}
 
-    print(f"\n  conscious slot (your language): {conscious_model}")
-    print(f"  unconscious slot (shell):       {unconscious_model}")
+    print("\n" + "-" * 40)
+    print("Reply language")
+    print("  Sysmind replies in whatever language you name. Any language the")
+    print("  model knows works - type it in full, e.g.:")
+    print("    auto (match what I type), English, Urdu, Arabic, Hindi,")
+    print("    Bengali, Spanish, French, Chinese, Japanese, Swahili, Turkish")
+    language = ask_text("Which language should it reply in?", "auto")
+
+    # Conscious slot: the choice that decides which languages work.
+    fam_idx = ask("Which model should hold the conscious slot (your language)?",
+                  [f["label"] for f in CONSCIOUS_FAMILIES], default=0)
+    family = CONSCIOUS_FAMILIES[fam_idx]
+
+    if language.strip().lower() in family["excludes"]:
+        print(f"\n  !! {family['key']} does not cover {language}.")
+        print(f"     It covers: {family['coverage']}")
+        print("     Qwen3 covers 119 languages including this one - using it instead.")
+        family = CONSCIOUS_FAMILIES[0]
+
+    conscious_model = family["sizes"][ram_tier]
+    unconscious_model = CODER_SIZES[ram_tier]
+
+    print(f"\n  conscious slot ({language}): {conscious_model}")
+    print(f"  unconscious slot (shell):    {unconscious_model}")
     if ram_tier in ("4gb", "8gb"):
         print("  note: two models on this much RAM is tight. Ollama swaps them")
         print("        on demand, or point one slot at an API endpoint in")
         print("        config.json (backend: openai, base_url, api_key_env).")
-
-    lang_idx = ask("Preferred reply language?", [
-        "Auto — match the language I type in",
-        "English",
-        "Urdu",
-        "Other (I'll edit config later)",
-    ], default=0)
-    language = ["auto", "English", "Urdu", "auto"][lang_idx]
 
     paranoia_idx = ask("Security scan depth?", ["Low", "Medium", "High"], default=1)
     paranoia = ["low", "medium", "high"][paranoia_idx]

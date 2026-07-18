@@ -140,10 +140,27 @@ sysmind-doctor           # health check
 sysmind-scan low         # refresh the system snapshot
 ```
 
-## Model pairs
+## Languages, and the models that provide them
 
-The installer picks a pair from your RAM. `qwen3` handles language (strong Urdu,
-Apache-2.0); `qwen2.5-coder` handles shell.
+**Language support comes from the model in the conscious slot, not from anything
+hardcoded here.** Nothing is special-cased per language. Name your language at install
+time — any language, typed in full — and the conscious model replies in it.
+
+The installer offers a curated list for that slot:
+
+| Family | Languages | Licence |
+|--------|-----------|---------|
+| **Qwen3** *(default)* | **119** — including Urdu, Arabic, Hindi, Bengali, Swahili | Apache-2.0 |
+| Gemma 3 | 55 major languages, strong translation quality | Gemma terms |
+| Command-R | 10 — EN, FR, ES, IT, DE, PT, JA, KO, AR, ZH | CC-BY-NC |
+| Aya Expanse | 23 — strong Arabic, Persian, Hindi, Turkish | CC-BY-NC |
+
+Qwen3 is the default because its coverage is the widest; pick another only if you want its
+particular strength. If you name a language your chosen family doesn't cover, the installer
+says so and falls back to Qwen3 rather than silently giving you a model that can't speak to
+you.
+
+The **unconscious slot never changes with language** — shell is shell:
 
 | RAM | conscious | unconscious |
 |-----|-----------|-------------|
@@ -152,14 +169,19 @@ Apache-2.0); `qwen2.5-coder` handles shell.
 | 16 GB | `qwen3:14b` | `qwen2.5-coder:14b` |
 | 24–32 GB | `qwen3:32b` | `qwen3-coder:30b` |
 
-Bigger `qwen3` speaks better Urdu, so size up the conscious slot if RAM allows. Two models
-on 8 GB is tight — Ollama swaps them on demand, or point one slot at an API endpoint.
+Bigger conscious models speak every language better, so size that slot up if RAM allows.
+Two models on 8 GB is tight — Ollama swaps them on demand, or point one slot at an API
+endpoint.
 
-**Dedicated Urdu open-weights** (Cohere's Tiny Aya, Alif 1.0 8B) are on Hugging Face but
-**not** in the Ollama library — using them means a manual GGUF import via `ollama create`,
-not a one-line pull. Tiny Aya is CC-BY-NC (non-commercial; fine for personal use) and is
-better at explaining than at precise reasoning — a reasonable conscious slot, never an
-unconscious one. **Aya Expanse** is on Ollama but does **not** cover Urdu.
+For a language no listed family covers well, any GGUF can be imported with
+`ollama create` and named in `config.json`. **Aya Expanse** and **Command-R** are
+CC-BY-NC — non-commercial use only.
+
+### Known limitation
+
+The **interface** — menu, prompts, safety messages — is currently English. Only the model's
+explanations follow your language. That means the moments where you approve or refuse a
+command are still in English. Localising those strings is the next piece of work.
 
 ## Status
 
