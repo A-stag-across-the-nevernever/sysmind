@@ -94,17 +94,24 @@ Anything sysmind has not been told about **asks**. Nothing runs unbidden, ever. 
 asks, you have four answers:
 
 ```
-Execute? [Y/n/always/never]
+  [1] run it this time
+  [2] do not run it
+  [3] always permit this
+  [4] never permit this
 ```
 
 | | this time | remembered |
 |---|---|---|
-| `Y` | runs | no — asks again |
-| `n` | doesn't run | no — asks again |
-| `always` | runs | **allow list** |
-| `never` | doesn't run | **block list** |
+| **1** | runs | no — asks again |
+| **2** | doesn't run | no — asks again |
+| **3** | runs | **allow list** |
+| **4** | doesn't run | **block list** |
 
-`always` and `never` are how you make something known. `Y` and `n` are one-off answers.
+**3** and **4** are how you make something known; **1** and **2** are one-off answers.
+
+Answers are digits on purpose. The labels are translated into your language, but no model
+reads what you typed — the digit → action mapping is in code, so a bad translation can
+confuse you but cannot run the wrong thing.
 
 **Allow list** — narrow and exact. Permitting `apt` does *not* unlock `apt remove`; each
 thing earns its own permission. When you say `always`, you choose the breadth yourself:

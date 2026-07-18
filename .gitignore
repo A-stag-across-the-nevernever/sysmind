@@ -12,3 +12,8 @@ __pycache__/
 
 # Editor / agent scratch
 .claude/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
