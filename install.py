@@ -273,6 +273,36 @@ def install():
     print(f"Config: {CONFIG_DIR / 'config.json'}")
     print(f"Scripts: {LIB_DIR}")
     print(f"Wrappers: {BIN_DIR}")
+    # The wizard itself cannot be localised — no model exists until now. But
+    # the interface can be, the moment the models are on disk, so the first
+    # real run is already in the user's language without them having to know
+    # that a localisation step exists.
+    if language.strip().lower() not in ("auto", "english") and ollama_found:
+        print(f"\nRendering the interface into {language}...")
+        try:
+            sys.path.insert(0, str(LIB_DIR))
+            import sysmind_strings as strings
+            from sysmind_partners import partner_from_slot
+
+            rendered = strings.localise(
+                partner_from_slot(config["slots"]["conscious"]), language)
+            done = sum(1 for k, v in rendered.items() if v != strings.BASE[k])
+
+            # Only cache a localisation that actually happened. Storing an
+            # all-English result under the user's language would claim a
+            # translation exists and hide the failure.
+            if done:
+                config["ui_strings"] = {"language": language, "strings": rendered}
+                with open(CONFIG_DIR / "config.json", "w") as f:
+                    json.dump(config, f, indent=2)
+                print(f"  {done}/{len(strings.BASE)} strings now in {language}.")
+            else:
+                print("  The model returned nothing usable — interface stays")
+                print("  English. Retry later with: sysmind-sync localise")
+        except Exception as e:
+            print(f"  Could not localise now ({e}).")
+            print(f"  Retry later with: sysmind-sync localise")
+
     print("\nCalibrate the pair before first use:  sysmind-sync calibrate")
     if shell_rc:
         print(f"\nRun: source {shell_rc} && sysmind")
