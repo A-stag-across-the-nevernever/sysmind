@@ -59,17 +59,23 @@ CODER_SIZES = {
     "16gb": "qwen2.5-coder:14b", "32gb": "qwen3-coder:30b",
 }
 
+import sysmind_i18n as i18n
+
 SCRIPTS = ["sysmind.py", "sysmind_scan.py", "sysmind_orbit.py", "sysmind_display.py",
            "sysmind_common.py", "sysmind_doctor.py", "sysmind_partners.py",
-           "sysmind_sync.py", "sysmind_turn.py"]
+           "sysmind_sync.py", "sysmind_turn.py", "sysmind_strings.py",
+           "sysmind_i18n.py"]
+
+
+_CHOICE = ["Choice", "default"]   # localised once the language is known
 
 
 def ask(question: str, options: list, default: int = 0) -> int:
     print(f"\n{question}")
     for i, opt in enumerate(options):
-        marker = " (default)" if i == default else ""
+        marker = f" ({_CHOICE[1]})" if i == default else ""
         print(f"  [{i+1}] {opt}{marker}")
-    ans = input("Choice: ").strip()
+    ans = input(f"{_CHOICE[0]}: ").strip()
     if not ans:
         return default
     try:
@@ -124,35 +130,52 @@ exec python3 "{LIB_DIR / script_name}" "$@"
 
 
 def install():
-    print("🧠 Sysmind Installer")
+    print("🧠 Sysmind")
     print("=" * 40)
 
-    level_idx = ask("How hands-off do you want this?", [
-        "Advisor — AI explains, I run everything manually",
-        "Assistant — AI suggests, I approve before running",
-        "Autopilot — Safe stuff auto-runs, dangerous asks",
-        "Full Auto — System self-manages, alerts only",
-    ], default=1)
+    # Asked first, and shown in each language's own script, so answering it
+    # requires no English. Everything after this is in the chosen language.
+    print("\nLanguage / زبان / اللغة / भाषा / 语言")
+    for i, (_, endonym, english) in enumerate(i18n.LANGUAGES):
+        label = endonym if endonym == english else f"{endonym}  ({english})"
+        print(f"  [{i+1}] {label}")
+    print(f"  [{len(i18n.LANGUAGES)+1}] Other - type the name")
+    raw = input("Choice [1]: ").strip()
+
+    try:
+        pick = int(raw) - 1 if raw else 0
+    except ValueError:
+        pick = 0
+
+    if 0 <= pick < len(i18n.LANGUAGES):
+        code, _, language = i18n.LANGUAGES[pick]
+    else:
+        # Any language at all: the wizard falls back to English, but the
+        # runtime still speaks whatever they name.
+        language = ask_text("Language?", "auto") or "auto"
+        code = language.strip().lower()
+    if code == "english":
+        language = "auto"
+
+    T = lambda key: i18n.t(code, key)
+    _CHOICE[0], _CHOICE[1] = T("choice"), T("default")
+    print("\n" + T("title"))
+    print("=" * 40)
+
+    level_idx = ask(T("q_level"), [T("level1"), T("level2"),
+                                   T("level3"), T("level4")], default=1)
     level = level_idx + 1
 
     ram = detect_ram()
     tiers = ["4gb", "8gb", "16gb", "32gb"]
-    ram_options = ["4GB or less", "8GB", "16GB", "24GB or more"]
-    ram_idx = ask("How much RAM does this machine have?", ram_options,
+    ram_options = [T("ram1"), T("ram2"), T("ram3"), T("ram4")]
+    ram_idx = ask(T("q_ram"), ram_options,
                   default=tiers.index(ram) if ram in tiers else 1)
     ram_tier = tiers[ram_idx]
     budgets = {"4gb": 2000, "8gb": 4000, "16gb": 8000, "32gb": 8000}
 
-    print("\n" + "-" * 40)
-    print("Reply language")
-    print("  Sysmind replies in whatever language you name. Any language the")
-    print("  model knows works - type it in full, e.g.:")
-    print("    auto (match what I type), English, Urdu, Arabic, Hindi,")
-    print("    Bengali, Spanish, French, Chinese, Japanese, Swahili, Turkish")
-    language = ask_text("Which language should it reply in?", "auto")
-
     # Conscious slot: the choice that decides which languages work.
-    fam_idx = ask("Which model should hold the conscious slot (your language)?",
+    fam_idx = ask(T("q_model"),
                   [f["label"] for f in CONSCIOUS_FAMILIES], default=0)
     family = CONSCIOUS_FAMILIES[fam_idx]
 
@@ -165,23 +188,23 @@ def install():
     conscious_model = family["sizes"][ram_tier]
     unconscious_model = CODER_SIZES[ram_tier]
 
-    print(f"\n  conscious slot ({language}): {conscious_model}")
-    print(f"  unconscious slot (shell):    {unconscious_model}")
+    print(f"\n  {conscious_model:24} {T('conscious_slot')}")
+    print(f"  {unconscious_model:24} {T('unconscious_slot')}")
     if ram_tier in ("4gb", "8gb"):
         print("  note: two models on this much RAM is tight. Ollama swaps them")
         print("        on demand, or point one slot at an API endpoint in")
         print("        config.json (backend: openai, base_url, api_key_env).")
 
-    paranoia_idx = ask("Security scan depth?", ["Low", "Medium", "High"], default=1)
+    paranoia_idx = ask(T("q_paranoia"), [T("low"), T("medium"), T("high")], default=1)
     paranoia = ["low", "medium", "high"][paranoia_idx]
 
-    notif_idx = ask("Desktop notifications?", ["Native popups", "Terminal only", "None"], default=0)
+    notif_idx = ask(T("q_notify"), [T("notify1"), T("notify2"), T("notify3")], default=0)
     notifications = ["native", "terminal", "none"][notif_idx]
 
-    launch_idx = ask("Launch method?", ["sysmind command", "Hotkey (requires setup)", "Both"], default=0)
+    launch_idx = ask(T("q_launch"), [T("launch1"), T("launch2"), T("launch3")], default=0)
     launch = ["alias", "hotkey", "both"][launch_idx]
 
-    blocklist_idx = ask("Block destructive commands?", ["Yes — block rm/dd/mkfs (safe)", "No — allow anything (expert)"], default=0)
+    blocklist_idx = ask(T("q_block"), [T("block_yes"), T("block_no")], default=0)
     blocklist_enabled = blocklist_idx == 0
 
     config = {
@@ -269,7 +292,7 @@ def install():
             subprocess.run(["ollama", "pull", m])
 
     print("\n" + "=" * 40)
-    print("Installation complete!")
+    print(T("done"))
     print(f"Config: {CONFIG_DIR / 'config.json'}")
     print(f"Scripts: {LIB_DIR}")
     print(f"Wrappers: {BIN_DIR}")
@@ -278,7 +301,7 @@ def install():
     # real run is already in the user's language without them having to know
     # that a localisation step exists.
     if language.strip().lower() not in ("auto", "english") and ollama_found:
-        print(f"\nRendering the interface into {language}...")
+        print(f"\n{T('localising')}")
         try:
             sys.path.insert(0, str(LIB_DIR))
             import sysmind_strings as strings
@@ -303,7 +326,7 @@ def install():
             print(f"  Could not localise now ({e}).")
             print(f"  Retry later with: sysmind-sync localise")
 
-    print("\nCalibrate the pair before first use:  sysmind-sync calibrate")
+    print("\n" + T("calibrate_hint"))
     if shell_rc:
         print(f"\nRun: source {shell_rc} && sysmind")
     else:
