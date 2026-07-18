@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sysmind"
+version = "0.1.0"
+description = "A local-AI companion for managing a Linux machine, in your own language"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "AGPL-3.0-or-later" }
+keywords = ["linux", "sysadmin", "llm", "ollama", "local-ai", "multilingual"]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: System :: Systems Administration",
+]
+
+# Deliberately empty. Everything is stdlib: no requests, no SDK, no framework.
+# Model access is HTTP to a local runtime or an OpenAI-compatible endpoint.
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/soulsin/sysmind"
+Source = "https://github.com/soulsin/sysmind"
+
+[project.scripts]
+sysmind = "sysmind:main"
+sysmind-setup = "install:install"
+sysmind-sync = "sysmind_sync:main"
+sysmind-doctor = "sysmind_doctor:main"
+sysmind-scan = "sysmind_scan:main"
+sysmind-orbit = "sysmind_orbit:main"
+sysmind-display = "sysmind_display:main"
+
+[tool.setuptools]
+py-modules = [
+    "sysmind",
+    "sysmind_common",
+    "sysmind_partners",
+    "sysmind_sync",
+    "sysmind_turn",
+    "sysmind_strings",
+    "sysmind_i18n",
+    "sysmind_scan",
+    "sysmind_orbit",
+    "sysmind_display",
+    "sysmind_doctor",
+    "install",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
