@@ -24,8 +24,8 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/soulsin/sysmind"
-Source = "https://github.com/soulsin/sysmind"
+Homepage = "https://github.com/A-stag-across-the-nevernever/sysmind"
+Source = "https://github.com/A-stag-across-the-nevernever/sysmind"
 
 [project.scripts]
 sysmind = "sysmind:main"

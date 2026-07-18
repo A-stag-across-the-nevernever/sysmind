@@ -43,6 +43,13 @@ With both slots local, nothing leaves your machine.
 ## Install
 
 ```bash
+pip install git+https://github.com/A-stag-across-the-nevernever/sysmind
+sysmind-setup
+```
+
+Or from a source copy:
+
+```bash
 cd sysmind
 ./setup.sh
 ```
