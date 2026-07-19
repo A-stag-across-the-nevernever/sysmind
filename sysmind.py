@@ -69,29 +69,32 @@ def _display(cmd: str) -> str:
     return "\n" + "\n".join("    " + ln for ln in lines)
 
 
-# Menu strings remain English for now; AI replies follow config["language"]
-MENU = """
-🧠 Parrot System Mind
-─────────────────────────────
-[1] Check for updates & upgrades
-[2] Check security posture
-[3] Free up disk space
-[4] Review recent logins & activity
-[5] Fix/restart a service
-[6] Ask something specific
-[7] Show system summary
-[q] Quit
-"""
+# Menu entries. The label IS the query sent to the conscious slot, which is why
+# each one asks to SHOW something. "Free up disk space" - the previous wording -
+# is the vague phrasing that makes a coder reach for rm -rf, so the menu would
+# have quietly undone the rule _COMPOSE enforces.
+#
+# Localised through the same cached strings as the prompt, so a menu selection
+# also carries the user's language into the turn: with language "auto", an
+# English menu label would make the model reply in English to an Urdu speaker.
+MENU_ITEMS = [
+    ("1", "menu_updates"),
+    ("2", "menu_security"),
+    ("3", "menu_disk"),
+    ("4", "menu_logins"),
+    ("5", "menu_service"),
+    ("6", "menu_ask"),
+    ("7", "menu_summary"),
+]
 
-MENU_MAP = {
-    "1": "Check for updates and upgrades",
-    "2": "Check security posture",
-    "3": "Free up disk space",
-    "4": "Review recent logins and activity",
-    "5": "Fix or restart a service",
-    "6": "Ask something specific",
-    "7": "Show system summary",
-}
+
+def render_menu(S: dict) -> str:
+    title = "{}  -  {}".format(S["menu_title"], sysmind_platform.CURRENT.name)
+    lines = ["", "🧠 " + title, "─" * max(len(title) + 3, 30)]
+    for key, label in MENU_ITEMS:
+        lines.append("[{}] {}".format(key, S[label]))
+    lines.append("[q] {}".format(S["menu_quit"]))
+    return "\n".join(lines) + "\n"
 
 
 def check_ollama() -> bool:
@@ -287,18 +290,21 @@ def main():
         print("Open menu anytime with: sysmind")
         return
 
-    print(MENU)
-    choice = input("Choice: ").strip().lower()
+    S = strings.load(config)
+    print(render_menu(S))
+    choice = input("{}: ".format(S["menu_choice"])).strip().lower()
 
-    if choice == "q":
+    if choice in ("q", "quit"):
         return
 
-    if choice in MENU_MAP:
-        query = MENU_MAP[choice]
-    elif choice == "6":
-        query = input("What do you want to know? ").strip()
+    if choice == "6":
+        query = input("{} ".format(S["menu_prompt"])).strip()
+        if not query:
+            return
+    elif choice in dict(MENU_ITEMS):
+        query = S[dict(MENU_ITEMS)[choice]]
     else:
-        print("Invalid choice.")
+        print(S["menu_invalid"])
         return
 
     print("Building context...")

@@ -307,7 +307,13 @@ Three rules keep this safe:
 - **If the conscious slot is unreachable**, the cached generic prompt is used. You are
   never left unable to be asked.
 
-Still English: the main menu and the installer wizard.
+The **menu is localised the same way**, and its labels are phrased as inspections —
+*"show what is using the most disk space"*, never *"free up disk space"*. That matters
+because a menu label is sent to the model verbatim as the request, so vague wording there
+would produce exactly the destructive commands `_COMPOSE` exists to prevent.
+
+Still English: the installer wizard's own text, which cannot be localised by a model
+because it runs before any model exists. It ships translated into 14 languages instead.
 
 ## Status
 

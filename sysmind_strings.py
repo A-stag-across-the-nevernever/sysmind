@@ -43,6 +43,23 @@ BASE: Dict[str, str] = {
     "to_undo": "To undo, edit",
     "scope_exact": "only this exact command",
     "scope_family": "anything matching",
+
+    # The menu. These labels are ALSO the query sent to the conscious model, so
+    # they are phrased as inspections rather than actions: "free up disk space"
+    # is exactly the vague wording that makes a coder reach for rm -rf, and it
+    # would undo the rule _COMPOSE enforces. Ask to look; decide after looking.
+    "menu_title": "Sysmind",
+    "menu_updates": "Show which packages have updates available",
+    "menu_security": "Show open ports and the current security posture",
+    "menu_disk": "Show what is using the most disk space",
+    "menu_logins": "Show recent logins and account activity",
+    "menu_service": "Show which services have failed",
+    "menu_ask": "Ask something specific",
+    "menu_summary": "Show a summary of this system",
+    "menu_quit": "Quit",
+    "menu_choice": "Choice",
+    "menu_prompt": "What do you want to know?",
+    "menu_invalid": "Not one of the options.",
 }
 
 # What the user types. Digits, because they are the same in every language.
