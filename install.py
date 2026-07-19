@@ -60,10 +60,25 @@ CONSCIOUS_FAMILIES = [
     },
 ]
 
-# The unconscious slot. Language-agnostic by definition.
+# The unconscious slot. Language-agnostic by definition, and small on purpose.
+#
+# Measured on the real calibration battery: 0.5b scores 0.53 and emits scripts
+# that fail `bash -n`; 1.5b scores 0.80; 3b scores 0.80 with no measured gain.
+# The coder writes one line from a written brief - a narrow job. What makes it
+# produce something destructive is a vague brief, not a small model.
+#
+# So RAM goes to the conscious slot, which is the measured bottleneck. The old
+# pairings did not even fit their own tiers: 8gb asked for ~10 GB and 32gb for
+# ~39 GB.
+#
+# The coder does scale with the conscious slot, though, because a better
+# conscious slot writes richer briefs: when qwen3:8b asked for "list sizes of
+# /var, /usr, /opt, /tmp, and /home directories", the 1.5b coder returned
+# nothing usable. So the larger tiers pair a larger coder - untested, unlike
+# the 1.5b figure.
 CODER_SIZES = {
-    "4gb": "qwen2.5-coder:1.5b", "8gb": "qwen2.5-coder:7b",
-    "16gb": "qwen2.5-coder:14b", "32gb": "qwen3-coder:30b",
+    "4gb": "qwen2.5-coder:1.5b", "8gb": "qwen2.5-coder:1.5b",
+    "16gb": "qwen2.5-coder:1.5b", "32gb": "qwen2.5-coder:7b",
 }
 
 import sysmind_i18n as i18n

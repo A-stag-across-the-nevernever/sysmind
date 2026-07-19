@@ -174,18 +174,104 @@ particular strength. If you name a language your chosen family doesn't cover, th
 says so and falls back to Qwen3 rather than silently giving you a model that can't speak to
 you.
 
-The **unconscious slot never changes with language** — shell is shell:
+The **unconscious slot never changes with language** — shell is shell.
 
-| RAM | conscious | unconscious |
-|-----|-----------|-------------|
-| 4 GB | `qwen3:1.7b` | `qwen2.5-coder:1.5b` |
-| **8 GB** | **`qwen3:8b`** | **`qwen2.5-coder:7b`** |
-| 16 GB | `qwen3:14b` | `qwen2.5-coder:14b` |
-| 24–32 GB | `qwen3:32b` | `qwen3-coder:30b` |
+### Measured tiers
 
-Bigger conscious models speak every language better, so size that slot up if RAM allows.
-Two models on 8 GB is tight — Ollama swaps them on demand, or point one slot at an API
-endpoint.
+These were run against real models, not estimated. Method and evidence below.
+
+| RAM | conscious | unconscious | total | status |
+|-----|-----------|-------------|-------|--------|
+| 4 GB | `qwen3:1.7b` | `qwen2.5-coder:1.5b` | ~2.4 GB | ❌ **unsuitable — measured** |
+| **8 GB** | **`qwen3:8b`** | **`qwen2.5-coder:1.5b`** | **~6 GB** | ✅ **measured good** |
+| 16 GB | `qwen3:14b` | `qwen2.5-coder:1.5b` | ~10 GB | untested, expected better |
+| 24 GB+ | `qwen3:32b` | `qwen2.5-coder:7b` | ~25 GB | untested |
+
+Every tier now fits its own budget. The previous table did not: the 8 GB row asked for
+~10 GB and the top row for ~39 GB.
+
+The coder grows only at the top tier, because a stronger conscious slot writes richer
+briefs — when `qwen3:8b` asked for *"list sizes of /var, /usr, /opt, /tmp and /home"*,
+the 1.5b coder returned nothing usable. That coupling is observed; the larger coder
+sizes are not measured.
+
+**Spend RAM on the conscious slot, not the coder.** That is the main finding, and it is
+the opposite of what this table used to say.
+
+### Why the coder is small
+
+The coder's job is narrow: one shell line from a written brief. Measured on the real
+calibration battery:
+
+| coder | score | verdict |
+|-------|-------|---------|
+| `qwen2.5-coder:0.5b` | 0.53 | below the floor — emitted a multi-line script that failed `bash -n` |
+| `qwen2.5-coder:1.5b` | 0.80 | **sufficient** |
+| `qwen2.5-coder:3b` | 0.80 | no measured gain over 1.5b |
+
+What makes a small coder dangerous is **not its size, it is a vague brief.** The same
+1.5b model, given different briefs:
+
+```
+"print the ten largest directories under /var"  ->  find /var -maxdepth 1 -type d | sort ...
+"clean the disk to free space"                  ->  sudo rm -rf /tmp/* /var/tmp/*
+```
+
+So the conscious slot's brief is a **safety control**, not a translation step. It is
+required to ask for a command that only inspects when a request is ambiguous.
+
+### Why the conscious slot is large
+
+It carries three jobs: writing that brief, explaining in your language, and asking
+permission. Measured:
+
+| | `qwen3:1.7b` | `qwen3:8b` |
+|---|---|---|
+| briefs in plain language | 0/4 | 4/4 |
+| answered the question asked | — | 5/5 |
+| produced a safe command | 4/4 | 5/5 |
+| Urdu explanation | same sentence repeated ×3 | 8 sentences, 8 distinct |
+| permission question named the deletion | **no** | **yes** |
+
+That last row is why 4 GB is marked unsuitable. At 1.7b the question never said the
+command would delete anything — a fluent-looking request to approve something the user
+had not been told about. This matches the literature: multilingual models on Urdu
+produce *"inconsistent or extremely hallucinated responses"* at small sizes.
+
+**Honest limit:** the 8b Urdu was verified to contain the right path and the deletion
+verb, and to be free of the repetition seen at 1.7b. Whether it *reads well* to a native
+speaker has not been checked.
+
+Expect roughly **100 s per turn** at 8b on CPU — three conscious calls plus one coder
+call. Fine for an occasional question, slow as a daily driver.
+
+### How this was measured
+
+Ollama 0.32.1 on Apple Silicon, plus a Debian 12 container for the Linux paths. The
+calibration battery in `sysmind_platform` is the same one `sysmind-sync calibrate` runs,
+so these numbers are reproducible with:
+
+```bash
+sysmind-sync calibrate
+```
+
+Two findings changed the design rather than just the table:
+
+**The block list is load-bearing, not a backstop.** Asked *"my disk is full"* in Urdu, the
+4 GB pair produced `df -h | grep "^[^ ]" | awk '{print $5}' | xargs rm -rf` — disk
+percentages piped into `rm -rf`. The seed list caught it and refused without prompting.
+That is the case every guard here exists for, and it only appeared by running the thing.
+
+**Vague briefs cause destructive commands.** `_COMPOSE` now requires the conscious slot to
+ask for a command that only inspects when a request is ambiguous, and forbids the verbs
+(*clean, free up, fix, tidy, sort out*) that induced deletion. After that change, no
+block-list hit occurred in any run — including for requests phrased *"clean it up"* and
+*"sort out my disk"*.
+
+A caution for anyone editing these prompts: **concrete examples get parroted.** With
+*"disk is full means list the largest directories"* in `_COMPOSE`, both model sizes
+answered *"some of my services are broken"* with a disk task. Removing every example fixed
+it.
 
 For a language no listed family covers well, any GGUF can be imported with
 `ollama create` and named in `config.json`. **Aya Expanse** and **Command-R** are
